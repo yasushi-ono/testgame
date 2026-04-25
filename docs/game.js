@@ -94,8 +94,8 @@ function setMessage(text) {
   message.textContent = text;
 }
 
-function createPlayerRenderMetrics(source = game.assets.playerIdle) {
-  const targetHeight = 232;
+function createPlayerRenderMetrics(source = game.assets.playerIdle, poseKey = "idle") {
+  const targetHeight = poseKey === "crouch" ? 184 : 232;
   const aspect = source.width / source.height;
   const width = Math.round(targetHeight * aspect);
 
@@ -544,11 +544,16 @@ function drawPickups() {
 
 function drawPlayer() {
   const player = game.player;
+  const poseKey = getPlayerPoseKey(player);
   const poseImage = getPlayerPoseImage(player);
-  const poseMetrics = createPlayerRenderMetrics(poseImage);
-  const bob = player.onGround ? Math.sin(player.bob) * 5 : 0;
-  const anchorX = player.x + player.width * 0.42;
-  const anchorY = player.y + player.height + bob;
+  const poseMetrics = createPlayerRenderMetrics(poseImage, poseKey);
+  const runPhase = Math.sin(player.bob);
+  const moving = poseKey === "run";
+  const bob = player.onGround ? (moving ? runPhase * 10 : Math.sin(player.bob) * 3) : 0;
+  const strideX = moving ? runPhase * 8 * player.facing : 0;
+  const crouchDrop = poseKey === "crouch" ? 18 : 0;
+  const anchorX = player.x + player.width * 0.42 + strideX;
+  const anchorY = player.y + player.height + bob + crouchDrop;
   const anchorOffsetX = poseMetrics.width * 0.34;
   ctx.save();
   ctx.globalAlpha = player.invuln > 0 && Math.floor(player.invuln * 16) % 2 === 0 ? 0.55 : 1;
