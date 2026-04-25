@@ -23,6 +23,7 @@ const ASSETS = {
   background: "./assets/cyber-city-bg.png",
   playerIdle: "./assets/operative-idle.png",
   playerRun: "./assets/operative-run.png",
+  playerRunAlt: "./assets/operative-run-alt.png",
   playerJump: "./assets/operative-jump.png",
   playerShoot: "./assets/operative-shoot.png",
   drone: "./assets/drone.png"
@@ -122,9 +123,12 @@ function getPlayerPoseKey(player) {
 
 function getPlayerPoseImage(player) {
   const poseKey = getPlayerPoseKey(player);
+  if (poseKey === "run") {
+    return Math.floor(player.bob / 0.55) % 2 === 0 ? game.assets.playerRun : game.assets.playerRunAlt;
+  }
+
   const poseMap = {
     idle: game.assets.playerIdle,
-    run: game.assets.playerRun,
     jump: game.assets.playerJump,
     shoot: game.assets.playerShoot
   };
@@ -348,7 +352,7 @@ function updatePlayer(dt) {
   player.burstCooldown = Math.max(0, player.burstCooldown - dt);
   player.invuln = Math.max(0, player.invuln - dt);
   player.energy = Math.min(100, player.energy + dt * 8);
-  player.bob += dt * (player.onGround ? 6 : 2);
+  player.bob += dt * (player.onGround ? Math.max(3, Math.abs(player.vx) * 0.05) : 2);
 }
 
 function updateEntities(dt) {
@@ -691,10 +695,11 @@ function bindInputs() {
 async function init() {
   bindInputs();
   try {
-      const [background, playerIdle, playerRun, playerJump, playerShoot, drone] = await Promise.all([
+      const [background, playerIdle, playerRun, playerRunAlt, playerJump, playerShoot, drone] = await Promise.all([
         loadImage(ASSETS.background),
         loadImage(ASSETS.playerIdle),
         loadImage(ASSETS.playerRun),
+        loadImage(ASSETS.playerRunAlt),
         loadImage(ASSETS.playerJump),
         loadImage(ASSETS.playerShoot),
         loadImage(ASSETS.drone)
@@ -703,6 +708,7 @@ async function init() {
         background,
         playerIdle: removeCheckerboardBackground(playerIdle),
         playerRun: removeCheckerboardBackground(playerRun),
+        playerRunAlt: removeCheckerboardBackground(playerRunAlt),
         playerJump: removeCheckerboardBackground(playerJump),
         playerShoot: removeCheckerboardBackground(playerShoot),
         drone: removeCheckerboardBackground(drone)
