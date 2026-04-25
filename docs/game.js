@@ -22,6 +22,7 @@ const GOAL_DISTANCE = 4200;
 const ASSETS = {
   background: "./assets/cyber-city-bg.png",
   playerIdle: "./assets/operative-idle.png",
+  playerCrouch: "./assets/operative-crouch.png",
   playerRun: "./assets/operative-run.png",
   playerRunAlt: "./assets/operative-run-alt.png",
   playerJump: "./assets/operative-jump.png",
@@ -109,6 +110,9 @@ function createPlayerRenderMetrics(source = game.assets.playerIdle) {
 }
 
 function getPlayerPoseKey(player) {
+  if (player.crouching && player.onGround) {
+    return "crouch";
+  }
   if (player.shotCooldown > 0.04) {
     return "shoot";
   }
@@ -129,6 +133,7 @@ function getPlayerPoseImage(player) {
 
   const poseMap = {
     idle: game.assets.playerIdle,
+    crouch: game.assets.playerCrouch,
     jump: game.assets.playerJump,
     shoot: game.assets.playerShoot
   };
@@ -170,7 +175,8 @@ function resetPlayer() {
     burstCooldown: 0,
     invuln: 0,
     bob: 0,
-    facing: 1
+    facing: 1,
+    crouching: false
   };
 }
 
@@ -303,10 +309,15 @@ function handleInput(dt) {
   const wantJump = keys.has("Space") || keys.has("ArrowUp") || touchState.jump;
   const wantShoot = keys.has("KeyJ") || keys.has("KeyF") || touchState.shoot;
   const wantBurst = keys.has("KeyK") || touchState.burst;
+  const wantCrouch = keys.has("ArrowDown") || keys.has("KeyS");
   const minX = 80;
   const maxX = WIDTH - player.width - 140;
 
-  if (moveLeft && !moveRight) {
+  player.crouching = wantCrouch && player.onGround;
+
+  if (player.crouching) {
+    player.vx *= 0.68;
+  } else if (moveLeft && !moveRight) {
     player.vx = -180;
     player.facing = -1;
   } else if (moveRight && !moveLeft) {
@@ -316,7 +327,7 @@ function handleInput(dt) {
     player.vx *= 0.82;
   }
 
-  if (wantJump && player.onGround) {
+  if (wantJump && player.onGround && !player.crouching) {
     player.vy = -760;
     player.onGround = false;
     setMessage("Jump thrusters engaged.");
@@ -326,7 +337,7 @@ function handleInput(dt) {
     createBullet("normal");
   }
 
-  if (wantBurst && player.burstCooldown <= 0 && player.energy >= 35) {
+  if (wantBurst && player.burstCooldown <= 0 && player.energy >= 35 && !player.crouching) {
     createBullet("burst");
   }
 
@@ -536,38 +547,14 @@ function drawPlayer() {
   const poseImage = getPlayerPoseImage(player);
   const poseMetrics = createPlayerRenderMetrics(poseImage);
   const bob = player.onGround ? Math.sin(player.bob) * 5 : 0;
-  const speed = Math.abs(player.vx);
-  const moving = speed > 20;
-  const airborne = !player.onGround;
-  const recoil = Math.max(0, 1 - player.shotCooldown / 0.18);
-  let rotation = 0;
-  let scaleX = player.facing;
-  let scaleY = 1;
-
-  if (airborne) {
-    rotation = Math.max(-0.2, Math.min(0.2, player.vy / 1800));
-    scaleY = 0.97;
-  } else if (moving) {
-    rotation = 0.04 * player.facing;
-    scaleY = 0.98;
-  } else {
-    rotation = -0.02 * player.facing;
-  }
-
-  if (player.shotCooldown > 0) {
-    rotation -= 0.03 * player.facing * recoil;
-    scaleX *= 1 + 0.02 * recoil;
-    scaleY *= 1 - 0.03 * recoil;
-  }
-
-  const drawX = player.x + player.width / 2;
-  const drawY = player.y + player.height / 2 + bob;
+  const anchorX = player.x + player.width * 0.42;
+  const anchorY = player.y + player.height + bob;
+  const anchorOffsetX = poseMetrics.width * 0.34;
   ctx.save();
   ctx.globalAlpha = player.invuln > 0 && Math.floor(player.invuln * 16) % 2 === 0 ? 0.55 : 1;
-  ctx.translate(drawX, drawY);
-  ctx.scale(scaleX, scaleY);
-  ctx.rotate(rotation);
-  ctx.drawImage(poseImage, -poseMetrics.width / 2, -poseMetrics.height / 2, poseMetrics.width, poseMetrics.height);
+  ctx.translate(anchorX, anchorY);
+  ctx.scale(player.facing, 1);
+  ctx.drawImage(poseImage, -anchorOffsetX, -poseMetrics.height, poseMetrics.width, poseMetrics.height);
   ctx.restore();
 }
 
@@ -695,9 +682,10 @@ function bindInputs() {
 async function init() {
   bindInputs();
   try {
-      const [background, playerIdle, playerRun, playerRunAlt, playerJump, playerShoot, drone] = await Promise.all([
+      const [background, playerIdle, playerCrouch, playerRun, playerRunAlt, playerJump, playerShoot, drone] = await Promise.all([
         loadImage(ASSETS.background),
         loadImage(ASSETS.playerIdle),
+        loadImage(ASSETS.playerCrouch),
         loadImage(ASSETS.playerRun),
         loadImage(ASSETS.playerRunAlt),
         loadImage(ASSETS.playerJump),
@@ -707,6 +695,7 @@ async function init() {
       game.assets = {
         background,
         playerIdle: removeCheckerboardBackground(playerIdle),
+        playerCrouch: removeCheckerboardBackground(playerCrouch),
         playerRun: removeCheckerboardBackground(playerRun),
         playerRunAlt: removeCheckerboardBackground(playerRunAlt),
         playerJump: removeCheckerboardBackground(playerJump),
