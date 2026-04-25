@@ -41,12 +41,11 @@ const game = {
   comboTimer: 0,
   messageTimer: 0,
   shake: 0,
-  spawnTimers: { drone: 1.4, obstacle: 1.1, pickup: 8 },
+  spawnTimers: { drone: 1.4, pickup: 8 },
   player: null,
   bullets: [],
   enemyBullets: [],
   drones: [],
-  obstacles: [],
   pickups: [],
   particles: [],
   lastTime: performance.now()
@@ -178,12 +177,11 @@ function resetGame() {
   game.combo = 1;
   game.comboTimer = 0;
   game.shake = 0;
-  game.spawnTimers = { drone: 1.4, obstacle: 1.1, pickup: 8 };
+  game.spawnTimers = { drone: 1.4, pickup: 8 };
   game.player = resetPlayer();
   game.bullets = [];
   game.enemyBullets = [];
   game.drones = [];
-  game.obstacles = [];
   game.pickups = [];
   game.particles = [];
   setMessage("回収艇が待機中。屋上帯を突破してください。");
@@ -282,20 +280,6 @@ function spawnDrone() {
   });
 }
 
-function spawnObstacle() {
-  const tall = Math.random() < 0.4;
-  const width = tall ? 72 : 84 + Math.random() * 38;
-  const height = tall ? 160 : 80 + Math.random() * 30;
-  game.obstacles.push({
-    x: WIDTH + 80,
-    y: FLOOR_Y - height,
-    width,
-    height,
-    tint: tall ? "#12203f" : "#1a2442",
-    platformTop: 12
-  });
-}
-
 function spawnPickup() {
   game.pickups.push({
     type: "energy",
@@ -351,7 +335,6 @@ function updatePlayer(dt) {
   handleInput(dt);
   player.lastX = player.x;
   player.lastY = player.y;
-  player.onGround = false;
   player.vy += 1800 * dt;
   player.y += player.vy * dt;
 
@@ -370,16 +353,11 @@ function updatePlayer(dt) {
 
 function updateEntities(dt) {
   game.spawnTimers.drone -= dt;
-  game.spawnTimers.obstacle -= dt;
   game.spawnTimers.pickup -= dt;
 
   if (game.spawnTimers.drone <= 0) {
     spawnDrone();
     game.spawnTimers.drone = 1.05 + Math.random() * 0.75;
-  }
-  if (game.spawnTimers.obstacle <= 0) {
-    spawnObstacle();
-    game.spawnTimers.obstacle = 1.2 + Math.random() * 0.8;
   }
   if (game.spawnTimers.pickup <= 0) {
     spawnPickup();
@@ -422,12 +400,6 @@ function updateEntities(dt) {
     }
   }
   game.drones = game.drones.filter((drone) => !drone.dead && drone.x > -260);
-
-  for (const obstacle of game.obstacles) {
-    obstacle.x -= game.worldSpeed * dt;
-  }
-  game.obstacles = game.obstacles.filter((obstacle) => obstacle.x > -200);
-
   for (const pickup of game.pickups) {
     pickup.x += pickup.vx * dt;
     pickup.bob += dt * 4;
@@ -437,43 +409,6 @@ function updateEntities(dt) {
 
 function resolveCollisions() {
   const hitbox = playerHitbox();
-  const player = game.player;
-  const previousBottom = player.lastY + player.height;
-  const currentBottom = player.y + player.height;
-  const previousLeft = player.lastX;
-  const previousRight = player.lastX + player.width;
-
-  for (const obstacle of game.obstacles) {
-    if (!rectsOverlap(hitbox, obstacle)) {
-      continue;
-    }
-
-    const crossedTop =
-      previousBottom <= obstacle.y + obstacle.platformTop &&
-      currentBottom >= obstacle.y &&
-      player.vy >= 0;
-
-    if (crossedTop) {
-      player.y = obstacle.y - player.height;
-      player.vy = 0;
-      player.onGround = true;
-      continue;
-    }
-
-    const cameFromLeft = previousRight <= obstacle.x + 8;
-    const cameFromRight = previousLeft >= obstacle.x + obstacle.width - 8;
-
-    if (cameFromLeft) {
-      player.x = obstacle.x - player.width - 2;
-      player.vx = Math.min(0, player.vx);
-    } else if (cameFromRight) {
-      player.x = obstacle.x + obstacle.width + 2;
-      player.vx = Math.max(0, player.vx);
-    } else {
-      player.y = obstacle.y + obstacle.height + 2;
-      player.vy = Math.max(160, player.vy);
-    }
-  }
 
   for (const bullet of game.enemyBullets) {
     if (rectsOverlap(hitbox, bullet)) {
@@ -577,19 +512,6 @@ function drawRooftop() {
   }
 }
 
-function drawObstacles() {
-  for (const obstacle of game.obstacles) {
-    ctx.fillStyle = obstacle.tint;
-    ctx.fillRect(obstacle.x, obstacle.y + 12, obstacle.width, obstacle.height - 12);
-    ctx.fillStyle = "#2a3965";
-    ctx.fillRect(obstacle.x - 6, obstacle.y, obstacle.width + 12, 14);
-    ctx.fillStyle = "rgba(102, 217, 255, 0.14)";
-    ctx.fillRect(obstacle.x + 8, obstacle.y + 20, obstacle.width - 16, 10);
-    ctx.fillStyle = "rgba(255, 198, 96, 0.18)";
-    ctx.fillRect(obstacle.x + 14, obstacle.y + obstacle.height - 22, obstacle.width - 28, 6);
-  }
-}
-
 function drawPickups() {
   for (const pickup of game.pickups) {
     const bob = Math.sin(pickup.bob) * 8;
@@ -687,7 +609,6 @@ function drawFrame() {
   drawBackground();
   drawGoalBeacon();
   drawRooftop();
-  drawObstacles();
   drawPickups();
   drawDrones();
   drawProjectiles();
