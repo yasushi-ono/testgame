@@ -58,8 +58,52 @@ function loadImage(src) {
   });
 }
 
+function removeCheckerboardBackground(image) {
+  const buffer = document.createElement("canvas");
+  buffer.width = image.width;
+  buffer.height = image.height;
+  const bufferCtx = buffer.getContext("2d", { willReadFrequently: true });
+  bufferCtx.drawImage(image, 0, 0);
+
+  const imageData = bufferCtx.getImageData(0, 0, buffer.width, buffer.height);
+  const { data } = imageData;
+
+  for (let index = 0; index < data.length; index += 4) {
+    const r = data[index];
+    const g = data[index + 1];
+    const b = data[index + 2];
+    const brightness = (r + g + b) / 3;
+    const maxChannelGap = Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b));
+
+    if (brightness >= 210 && maxChannelGap <= 18) {
+      data[index + 3] = 0;
+    } else if (brightness >= 175 && maxChannelGap <= 14) {
+      data[index + 3] = Math.max(0, Math.round((210 - brightness) * 5));
+    }
+  }
+
+  bufferCtx.putImageData(imageData, 0, 0);
+  return buffer;
+}
+
 function setMessage(text) {
   message.textContent = text;
+}
+
+function createPlayerRenderMetrics() {
+  const source = game.assets.player;
+  const targetHeight = 232;
+  const aspect = source.width / source.height;
+  const width = Math.round(targetHeight * aspect);
+
+  return {
+    width,
+    height: targetHeight,
+    hitboxOffsetX: Math.round(width * 0.34),
+    hitboxOffsetY: Math.round(targetHeight * 0.21),
+    hitboxWidth: Math.round(width * 0.3),
+    hitboxHeight: Math.round(targetHeight * 0.68)
+  };
 }
 
 function updateOverlay(mode) {
@@ -74,15 +118,16 @@ function updateOverlay(mode) {
 }
 
 function resetPlayer() {
+  const metrics = createPlayerRenderMetrics();
   return {
     x: 200,
-    y: FLOOR_Y - 260,
-    width: 210,
-    height: 260,
-    hitboxOffsetX: 24,
-    hitboxOffsetY: 36,
-    hitboxWidth: 88,
-    hitboxHeight: 208,
+    y: FLOOR_Y - metrics.height,
+    width: metrics.width,
+    height: metrics.height,
+    hitboxOffsetX: metrics.hitboxOffsetX,
+    hitboxOffsetY: metrics.hitboxOffsetY,
+    hitboxWidth: metrics.hitboxWidth,
+    hitboxHeight: metrics.hitboxHeight,
     vx: 0,
     vy: 0,
     onGround: true,
@@ -622,13 +667,17 @@ function bindInputs() {
 async function init() {
   bindInputs();
   try {
-    const [background, player, drone] = await Promise.all([
-      loadImage(ASSETS.background),
-      loadImage(ASSETS.player),
-      loadImage(ASSETS.drone)
-    ]);
-    game.assets = { background, player, drone };
-    resetGame();
+      const [background, player, drone] = await Promise.all([
+        loadImage(ASSETS.background),
+        loadImage(ASSETS.player),
+        loadImage(ASSETS.drone)
+      ]);
+      game.assets = {
+        background,
+        player: removeCheckerboardBackground(player),
+        drone
+      };
+      resetGame();
   } catch (error) {
     overlayKicker.textContent = "Load Error";
     overlayTitle.textContent = "アセットの読み込みに失敗しました";
