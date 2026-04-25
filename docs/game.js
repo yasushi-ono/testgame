@@ -128,7 +128,7 @@ function getPlayerPoseKey(player) {
 function getPlayerPoseImage(player) {
   const poseKey = getPlayerPoseKey(player);
   if (poseKey === "run") {
-    return Math.floor(player.bob / 0.55) % 2 === 0 ? game.assets.playerRun : game.assets.playerRunAlt;
+    return Math.floor(player.bob / 1.05) % 2 === 0 ? game.assets.playerRun : game.assets.playerRunAlt;
   }
 
   const poseMap = {
@@ -363,7 +363,7 @@ function updatePlayer(dt) {
   player.burstCooldown = Math.max(0, player.burstCooldown - dt);
   player.invuln = Math.max(0, player.invuln - dt);
   player.energy = Math.min(100, player.energy + dt * 8);
-  player.bob += dt * (player.onGround ? Math.max(3, Math.abs(player.vx) * 0.05) : 2);
+  player.bob += dt * (player.onGround ? Math.max(2.2, Math.abs(player.vx) * 0.028) : 1.6);
 }
 
 function updateEntities(dt) {
@@ -549,8 +549,8 @@ function drawPlayer() {
   const poseMetrics = createPlayerRenderMetrics(poseImage, poseKey);
   const runPhase = Math.sin(player.bob);
   const moving = poseKey === "run";
-  const bob = player.onGround ? (moving ? runPhase * 10 : Math.sin(player.bob) * 3) : 0;
-  const strideX = moving ? runPhase * 8 * player.facing : 0;
+  const bob = player.onGround ? (moving ? runPhase * 4.5 : Math.sin(player.bob) * 1.8) : 0;
+  const strideX = moving ? runPhase * 2.5 * player.facing : 0;
   const crouchDrop = poseKey === "crouch" ? 18 : 0;
   const anchorX = player.x + player.width * 0.42 + strideX;
   const anchorY = player.y + player.height + bob + crouchDrop;
