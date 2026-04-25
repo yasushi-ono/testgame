@@ -109,11 +109,15 @@ function createPlayerRenderMetrics(source = game.assets.playerIdle, poseKey = "i
   };
 }
 
+function getRunFrameIndex(player) {
+  return Math.floor(player.bob / 0.78) % 2;
+}
+
 function getPlayerPoseKey(player) {
   if (player.crouching && player.onGround) {
     return "crouch";
   }
-  if (player.shotCooldown > 0.04) {
+  if (player.isFiring) {
     return "shoot";
   }
   if (!player.onGround) {
@@ -128,7 +132,7 @@ function getPlayerPoseKey(player) {
 function getPlayerPoseImage(player) {
   const poseKey = getPlayerPoseKey(player);
   if (poseKey === "run") {
-    return Math.floor(player.bob / 1.05) % 2 === 0 ? game.assets.playerRun : game.assets.playerRunAlt;
+    return getRunFrameIndex(player) === 0 ? game.assets.playerRun : game.assets.playerRunAlt;
   }
 
   const poseMap = {
@@ -176,7 +180,8 @@ function resetPlayer() {
     invuln: 0,
     bob: 0,
     facing: 1,
-    crouching: false
+    crouching: false,
+    isFiring: false
   };
 }
 
@@ -314,6 +319,7 @@ function handleInput(dt) {
   const maxX = WIDTH - player.width - 140;
 
   player.crouching = wantCrouch && player.onGround;
+  player.isFiring = (wantShoot || wantBurst) && !player.crouching;
 
   if (player.crouching) {
     player.vx *= 0.68;
@@ -547,10 +553,11 @@ function drawPlayer() {
   const poseKey = getPlayerPoseKey(player);
   const poseImage = getPlayerPoseImage(player);
   const poseMetrics = createPlayerRenderMetrics(poseImage, poseKey);
-  const runPhase = Math.sin(player.bob);
   const moving = poseKey === "run";
-  const bob = player.onGround ? (moving ? runPhase * 4.5 : Math.sin(player.bob) * 1.8) : 0;
-  const strideX = moving ? runPhase * 2.5 * player.facing : 0;
+  const runFrame = moving ? getRunFrameIndex(player) : 0;
+  const stepSign = runFrame === 0 ? -1 : 1;
+  const bob = player.onGround ? (moving ? stepSign * 2.4 : Math.sin(player.bob) * 1.8) : 0;
+  const strideX = moving ? stepSign * 1.2 * player.facing : 0;
   const crouchDrop = poseKey === "crouch" ? 18 : 0;
   const anchorX = player.x + player.width * 0.42 + strideX;
   const anchorY = player.y + player.height + bob + crouchDrop;
@@ -559,7 +566,36 @@ function drawPlayer() {
   ctx.globalAlpha = player.invuln > 0 && Math.floor(player.invuln * 16) % 2 === 0 ? 0.55 : 1;
   ctx.translate(anchorX, anchorY);
   ctx.scale(player.facing, 1);
-  ctx.drawImage(poseImage, -anchorOffsetX, -poseMetrics.height, poseMetrics.width, poseMetrics.height);
+  if (moving) {
+    const sourceSplitY = Math.round(poseImage.height * 0.54);
+    const destSplitY = Math.round(poseMetrics.height * 0.54);
+    const torsoOffsetX = stepSign * -1.4;
+    const legOffsetX = stepSign * 5.5;
+    ctx.drawImage(
+      poseImage,
+      0,
+      0,
+      poseImage.width,
+      sourceSplitY,
+      -anchorOffsetX + torsoOffsetX,
+      -poseMetrics.height,
+      poseMetrics.width,
+      destSplitY
+    );
+    ctx.drawImage(
+      poseImage,
+      0,
+      sourceSplitY,
+      poseImage.width,
+      poseImage.height - sourceSplitY,
+      -anchorOffsetX + legOffsetX,
+      -poseMetrics.height + destSplitY,
+      poseMetrics.width,
+      poseMetrics.height - destSplitY
+    );
+  } else {
+    ctx.drawImage(poseImage, -anchorOffsetX, -poseMetrics.height, poseMetrics.width, poseMetrics.height);
+  }
   ctx.restore();
 }
 
