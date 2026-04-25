@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moonline Breaker</title>
+    <link rel="stylesheet" href="./game.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero-panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Browser Side-Scroller / Cyberpunk Rooftop Assault</p>
+          <h1>Moonline Breaker</h1>
+          <p class="lede">
+            月夜の高層都市を駆け抜け、追撃ドローンを撃ち落としながら脱出地点を目指す
+            横スクロール2Dアクションです。ブラウザだけでそのまま遊べます。
+          </p>
+        </div>
+        <div class="hero-meta">
+          <div>
+            <span class="meta-label">操作</span>
+            <p>A D / ← → 移動, Space ジャンプ, J 射撃, K バースト</p>
+          </div>
+          <div>
+            <span class="meta-label">ミッション</span>
+            <p>HPを切らさず 4200m 先の回収艇まで到達</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="game-shell">
+        <div class="hud-strip">
+          <div class="stat-card">
+            <span>HP</span>
+            <div class="meter">
+              <div id="hp-fill" class="meter-fill hp-fill"></div>
+            </div>
+            <strong id="hp-value">100 / 100</strong>
+          </div>
+          <div class="stat-card">
+            <span>Energy</span>
+            <div class="meter">
+              <div id="energy-fill" class="meter-fill energy-fill"></div>
+            </div>
+            <strong id="energy-value">100 / 100</strong>
+          </div>
+          <div class="stat-card compact">
+            <span>Distance</span>
+            <strong id="distance-value">0 m / 4200 m</strong>
+          </div>
+          <div class="stat-card compact">
+            <span>Combo</span>
+            <strong id="combo-value">x1</strong>
+          </div>
+        </div>
+
+        <div class="stage-frame">
+          <canvas id="game" width="1280" height="720" aria-label="Moonline Breaker"></canvas>
+
+          <div id="overlay" class="overlay">
+            <div class="overlay-card">
+              <p id="overlay-kicker" class="eyebrow">Ready</p>
+              <h2 id="overlay-title">Moonline Breaker</h2>
+              <p id="overlay-copy">
+                ドローンを撃ちながら屋上を突破し、満月の下で回収艇へ到達してください。
+              </p>
+              <div class="overlay-actions">
+                <button id="start-button" type="button">作戦開始</button>
+                <button id="restart-button" type="button" class="secondary hidden">もう一度</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="reticle">
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+
+        <div class="lower-panel">
+          <div class="mission-log">
+            <span class="meta-label">Mission Feed</span>
+            <p id="message">回収艇が待機中。屋上帯を突破してください。</p>
+          </div>
+          <div class="tips">
+            <div>
+              <span class="meta-label">Hint</span>
+              <p>バーストはエネルギーを35消費し、複数の敵をまとめて貫通します。</p>
+            </div>
+            <div>
+              <span class="meta-label">Assets</span>
+              <p>背景・主人公・敵ドローンは画像生成アセットを使用しています。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-controls" aria-label="touch controls">
+          <div class="control-pad">
+            <button class="touch-button" data-touch="left" type="button">◀</button>
+            <button class="touch-button" data-touch="jump" type="button">⤒</button>
+            <button class="touch-button" data-touch="right" type="button">▶</button>
+          </div>
+          <div class="control-pad">
+            <button class="touch-button accent" data-touch="shoot" type="button">FIRE</button>
+            <button class="touch-button danger" data-touch="burst" type="button">BURST</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./game.js"></script>
+  </body>
+</html>
