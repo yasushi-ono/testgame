@@ -21,7 +21,10 @@ const FLOOR_Y = 590;
 const GOAL_DISTANCE = 4200;
 const ASSETS = {
   background: "./assets/cyber-city-bg.png",
-  player: "./assets/operative.png",
+  playerIdle: "./assets/operative-idle.png",
+  playerRun: "./assets/operative-run.png",
+  playerJump: "./assets/operative-jump.png",
+  playerShoot: "./assets/operative-shoot.png",
   drone: "./assets/drone.png"
 };
 
@@ -90,8 +93,7 @@ function setMessage(text) {
   message.textContent = text;
 }
 
-function createPlayerRenderMetrics() {
-  const source = game.assets.player;
+function createPlayerRenderMetrics(source = game.assets.playerIdle) {
   const targetHeight = 232;
   const aspect = source.width / source.height;
   const width = Math.round(targetHeight * aspect);
@@ -104,6 +106,31 @@ function createPlayerRenderMetrics() {
     hitboxWidth: Math.round(width * 0.3),
     hitboxHeight: Math.round(targetHeight * 0.68)
   };
+}
+
+function getPlayerPoseKey(player) {
+  if (player.shotCooldown > 0.04) {
+    return "shoot";
+  }
+  if (!player.onGround) {
+    return "jump";
+  }
+  if (Math.abs(player.vx) > 20) {
+    return "run";
+  }
+  return "idle";
+}
+
+function getPlayerPoseImage(player) {
+  const poseKey = getPlayerPoseKey(player);
+  const poseMap = {
+    idle: game.assets.playerIdle,
+    run: game.assets.playerRun,
+    jump: game.assets.playerJump,
+    shoot: game.assets.playerShoot
+  };
+
+  return poseMap[poseKey] ?? game.assets.playerIdle;
 }
 
 function updateOverlay(mode) {
@@ -122,6 +149,8 @@ function resetPlayer() {
   return {
     x: 200,
     y: FLOOR_Y - metrics.height,
+    lastX: 200,
+    lastY: FLOOR_Y - metrics.height,
     width: metrics.width,
     height: metrics.height,
     hitboxOffsetX: metrics.hitboxOffsetX,
@@ -137,7 +166,8 @@ function resetPlayer() {
     shotCooldown: 0,
     burstCooldown: 0,
     invuln: 0,
-    bob: 0
+    bob: 0,
+    facing: 1
   };
 }
 
@@ -261,7 +291,8 @@ function spawnObstacle() {
     y: FLOOR_Y - height,
     width,
     height,
-    tint: tall ? "#12203f" : "#1a2442"
+    tint: tall ? "#12203f" : "#1a2442",
+    platformTop: 12
   });
 }
 
@@ -289,8 +320,10 @@ function handleInput(dt) {
 
   if (moveLeft && !moveRight) {
     player.vx = -180;
+    player.facing = -1;
   } else if (moveRight && !moveLeft) {
     player.vx = 180;
+    player.facing = 1;
   } else {
     player.vx *= 0.82;
   }
@@ -316,6 +349,9 @@ function handleInput(dt) {
 function updatePlayer(dt) {
   const player = game.player;
   handleInput(dt);
+  player.lastX = player.x;
+  player.lastY = player.y;
+  player.onGround = false;
   player.vy += 1800 * dt;
   player.y += player.vy * dt;
 
@@ -401,11 +437,41 @@ function updateEntities(dt) {
 
 function resolveCollisions() {
   const hitbox = playerHitbox();
+  const player = game.player;
+  const previousBottom = player.lastY + player.height;
+  const currentBottom = player.y + player.height;
+  const previousLeft = player.lastX;
+  const previousRight = player.lastX + player.width;
 
   for (const obstacle of game.obstacles) {
-    if (rectsOverlap(hitbox, obstacle)) {
-      damagePlayer(14);
-      obstacle.x -= 50;
+    if (!rectsOverlap(hitbox, obstacle)) {
+      continue;
+    }
+
+    const crossedTop =
+      previousBottom <= obstacle.y + obstacle.platformTop &&
+      currentBottom >= obstacle.y &&
+      player.vy >= 0;
+
+    if (crossedTop) {
+      player.y = obstacle.y - player.height;
+      player.vy = 0;
+      player.onGround = true;
+      continue;
+    }
+
+    const cameFromLeft = previousRight <= obstacle.x + 8;
+    const cameFromRight = previousLeft >= obstacle.x + obstacle.width - 8;
+
+    if (cameFromLeft) {
+      player.x = obstacle.x - player.width - 2;
+      player.vx = Math.min(0, player.vx);
+    } else if (cameFromRight) {
+      player.x = obstacle.x + obstacle.width + 2;
+      player.vx = Math.max(0, player.vx);
+    } else {
+      player.y = obstacle.y + obstacle.height + 2;
+      player.vy = Math.max(160, player.vy);
     }
   }
 
@@ -514,9 +580,13 @@ function drawRooftop() {
 function drawObstacles() {
   for (const obstacle of game.obstacles) {
     ctx.fillStyle = obstacle.tint;
-    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+    ctx.fillRect(obstacle.x, obstacle.y + 12, obstacle.width, obstacle.height - 12);
+    ctx.fillStyle = "#2a3965";
+    ctx.fillRect(obstacle.x - 6, obstacle.y, obstacle.width + 12, 14);
     ctx.fillStyle = "rgba(102, 217, 255, 0.14)";
-    ctx.fillRect(obstacle.x + 8, obstacle.y + 10, obstacle.width - 16, 10);
+    ctx.fillRect(obstacle.x + 8, obstacle.y + 20, obstacle.width - 16, 10);
+    ctx.fillStyle = "rgba(255, 198, 96, 0.18)";
+    ctx.fillRect(obstacle.x + 14, obstacle.y + obstacle.height - 22, obstacle.width - 28, 6);
   }
 }
 
@@ -537,10 +607,41 @@ function drawPickups() {
 
 function drawPlayer() {
   const player = game.player;
+  const poseImage = getPlayerPoseImage(player);
+  const poseMetrics = createPlayerRenderMetrics(poseImage);
   const bob = player.onGround ? Math.sin(player.bob) * 5 : 0;
+  const speed = Math.abs(player.vx);
+  const moving = speed > 20;
+  const airborne = !player.onGround;
+  const recoil = Math.max(0, 1 - player.shotCooldown / 0.18);
+  let rotation = 0;
+  let scaleX = player.facing;
+  let scaleY = 1;
+
+  if (airborne) {
+    rotation = Math.max(-0.2, Math.min(0.2, player.vy / 1800));
+    scaleY = 0.97;
+  } else if (moving) {
+    rotation = 0.04 * player.facing;
+    scaleY = 0.98;
+  } else {
+    rotation = -0.02 * player.facing;
+  }
+
+  if (player.shotCooldown > 0) {
+    rotation -= 0.03 * player.facing * recoil;
+    scaleX *= 1 + 0.02 * recoil;
+    scaleY *= 1 - 0.03 * recoil;
+  }
+
+  const drawX = player.x + player.width / 2;
+  const drawY = player.y + player.height / 2 + bob;
   ctx.save();
   ctx.globalAlpha = player.invuln > 0 && Math.floor(player.invuln * 16) % 2 === 0 ? 0.55 : 1;
-  ctx.drawImage(game.assets.player, player.x - 20, player.y + bob, player.width, player.height);
+  ctx.translate(drawX, drawY);
+  ctx.scale(scaleX, scaleY);
+  ctx.rotate(rotation);
+  ctx.drawImage(poseImage, -poseMetrics.width / 2, -poseMetrics.height / 2, poseMetrics.width, poseMetrics.height);
   ctx.restore();
 }
 
@@ -669,14 +770,20 @@ function bindInputs() {
 async function init() {
   bindInputs();
   try {
-      const [background, player, drone] = await Promise.all([
+      const [background, playerIdle, playerRun, playerJump, playerShoot, drone] = await Promise.all([
         loadImage(ASSETS.background),
-        loadImage(ASSETS.player),
+        loadImage(ASSETS.playerIdle),
+        loadImage(ASSETS.playerRun),
+        loadImage(ASSETS.playerJump),
+        loadImage(ASSETS.playerShoot),
         loadImage(ASSETS.drone)
       ]);
       game.assets = {
         background,
-        player: removeCheckerboardBackground(player),
+        playerIdle: removeCheckerboardBackground(playerIdle),
+        playerRun: removeCheckerboardBackground(playerRun),
+        playerJump: removeCheckerboardBackground(playerJump),
+        playerShoot: removeCheckerboardBackground(playerShoot),
         drone: removeCheckerboardBackground(drone)
       };
       resetGame();
