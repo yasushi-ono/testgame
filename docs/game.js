@@ -710,12 +710,25 @@ function bindInputs() {
 async function init() {
   bindInputs();
   try {
-      const [background, playerIdle, playerCrouch, playerRun, playerRunAlt, playerJump, playerShoot, drone] = await Promise.all([
+      const [
+        background,
+        playerIdle,
+        playerCrouch,
+        playerRun1,
+        playerRun2,
+        playerRun3,
+        playerRun4,
+        playerJump,
+        playerShoot,
+        drone
+      ] = await Promise.all([
         loadImage(ASSETS.background),
         loadImage(ASSETS.playerIdle),
         loadImage(ASSETS.playerCrouch),
-        loadImage(ASSETS.playerRun),
-        loadImage(ASSETS.playerRunAlt),
+        loadImage(ASSETS.playerRun1),
+        loadImage(ASSETS.playerRun2),
+        loadImage(ASSETS.playerRun3),
+        loadImage(ASSETS.playerRun4),
         loadImage(ASSETS.playerJump),
         loadImage(ASSETS.playerShoot),
         loadImage(ASSETS.drone)
@@ -724,8 +737,10 @@ async function init() {
         background,
         playerIdle: removeCheckerboardBackground(playerIdle),
         playerCrouch: removeCheckerboardBackground(playerCrouch),
-        playerRun: removeCheckerboardBackground(playerRun),
-        playerRunAlt: removeCheckerboardBackground(playerRunAlt),
+        playerRun1: removeCheckerboardBackground(playerRun1),
+        playerRun2: removeCheckerboardBackground(playerRun2),
+        playerRun3: removeCheckerboardBackground(playerRun3),
+        playerRun4: removeCheckerboardBackground(playerRun4),
         playerJump: removeCheckerboardBackground(playerJump),
         playerShoot: removeCheckerboardBackground(playerShoot),
         drone: removeCheckerboardBackground(drone)
