@@ -284,6 +284,8 @@ function handleInput(dt) {
   const wantJump = keys.has("Space") || keys.has("ArrowUp") || touchState.jump;
   const wantShoot = keys.has("KeyJ") || keys.has("KeyF") || touchState.shoot;
   const wantBurst = keys.has("KeyK") || touchState.burst;
+  const minX = 80;
+  const maxX = WIDTH - player.width - 140;
 
   if (moveLeft && !moveRight) {
     player.vx = -180;
@@ -307,7 +309,7 @@ function handleInput(dt) {
     createBullet("burst");
   }
 
-  player.x = Math.max(80, Math.min(380, player.x + player.vx * dt));
+  player.x = Math.max(minX, Math.min(maxX, player.x + player.vx * dt));
   game.worldSpeed = 340 + (moveRight ? 60 : 0) - (moveLeft ? 35 : 0);
 }
 
@@ -675,7 +677,7 @@ async function init() {
       game.assets = {
         background,
         player: removeCheckerboardBackground(player),
-        drone
+        drone: removeCheckerboardBackground(drone)
       };
       resetGame();
   } catch (error) {
