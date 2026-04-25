@@ -97,7 +97,11 @@ function setMessage(text) {
 }
 
 function createPlayerRenderMetrics(source = game.assets.playerIdle, poseKey = "idle") {
-  const targetHeight = poseKey === "crouch" ? 184 : 232;
+  const targetHeights = {
+    crouch: 184,
+    run: 268
+  };
+  const targetHeight = targetHeights[poseKey] ?? 232;
   const aspect = source.width / source.height;
   const width = Math.round(targetHeight * aspect);
 
